@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Madlad400 Translation Interface (WebSocket)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1rem;
+            font-weight: 400;
+        }
+
+        /* THÊM CÁC ĐOẠN MÃ SAU */
+
+/* Biến cả hai section thành flex container dạng cột */
+        .input-section, .output-section {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Cho phép textarea phát triển để lấp đầy không gian trong section của nó */
+        .textarea {
+            flex-grow: 1;
+        }
+
+        /* Cho phép container chứa kết quả phát triển và trở thành một flex container */
+        .output-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Cho phép vùng văn bản kết quả phát triển để lấp đầy container của nó */
+        .output-text {
+            flex-grow: 1;
+        }
+
+        .translation-area {
+            display: grid;
+            grid-template-columns: 1fr 80px 1fr;
+            gap: 20px;
+            align-items: stretch;
+            margin-bottom: 30px;
+        }
+
+        .input-section, .output-section {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px;
+            border: 2px solid #e1e5e9;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .input-section:focus-within {
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        .textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 16px;
+            border: 1px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 22px;
+            font-family: inherit;
+            resize: vertical;
+            transition: all 0.3s ease;
+            background: #fafafa;
+        }
+
+
+        .section-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        
+        .textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            background: #fff;
+        }
+
+        .output-container {
+            width: 100%;
+            border: 1px solid #e1e5e9;
+            border-radius: 12px;
+            background: #f8f9ff;
+            overflow: hidden;
+        }
+
+        .output-text {
+            min-height: 120px;
+            padding: 16px;
+            font-size: 22px;
+            color: #333;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            font-family: inherit;
+            border: none;
+            background: transparent;
+        }
+
+        .output-text.empty {
+            color: #999;
+        }
+
+        .pinyin-section {
+            border-top: 1px solid #e1e5e9;
+            background: linear-gradient(135deg, #f0f2ff 0%, #f8f9ff 100%);
+            padding: 16px;
+            display: none;
+        }
+
+        .pinyin-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #667eea;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .pinyin-text {
+            font-size: 18px;
+            color: #555;
+            line-height: 1.5;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            background: rgba(255, 255, 255, 0.6);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .arrow-section {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 35px;
+        }
+
+        .arrow {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .arrow.processing {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5); }
+            100% { transform: scale(1); }
+        }
+
+        .language-selector {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .language-option {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .language-input {
+            display: none;
+        }
+
+        .language-label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            background: #fff;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            min-height: 100px;
+            justify-content: center;
+        }
+
+        .language-label:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .language-input:checked + .language-label {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .flag {
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+
+        .language-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        .language-code {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            margin-top: 2px;
+            text-align: center;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .translate-button {
+            padding: 16px 40px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .translate-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .translate-button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .spinner {
+            display: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .clear-button {
+            padding: 16px 24px;
+            background: #fff;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            color: #666;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .clear-button:hover {
+            border-color: #dc3545;
+            color: #dc3545;
+            transform: translateY(-1px);
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            padding: 15px 20px;
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 12px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .error-message {
+            background: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+            padding: 15px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(220, 53, 69, 0.2);
+            margin-top: 15px;
+            display: none;
+        }
+
+        .success-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 24px;
+            height: 24px;
+            background: #28a745;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+        }
+
+        .copy-indicator {
+            position: absolute;
+            top: -30px;
+            right: 0;
+            background: #28a745;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 500;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .copy-indicator.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .output-section {
+            position: relative;
+        }
+
+        .lang-tag {
+            display: none; /* Ẩn thẻ đi lúc đầu */
+            font-size: 0.75rem;
+            font-weight: 500;
+            padding: 4px 10px;
+            border-radius: 12px;
+            background-color: #eef0f2;
+            color: #555;
+            margin-left: 10px;
+        }
+
+        @media (max-width: 1200px) {
+            .language-selector {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .title {
+                font-size: 2rem;
+            }
+            
+            .translation-area {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            
+            .arrow-section {
+                margin: 15px 0;
+            }
+            
+            .arrow {
+                transform: rotate(90deg);
+            }
+            
+            .language-selector {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                flex-direction: column;
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .pinyin-fade-in {
+            animation: pinyinFadeIn 0.6s ease-out;
+        }
+
+        @keyframes pinyinFadeIn {
+            from { 
+                opacity: 0; 
+                transform: translateY(-10px);
+                max-height: 0;
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0);
+                max-height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">🌍 AI Translator</h1>
+            <p class="subtitle">Demo Application</p>
+        </div>
+
+        <div class="translation-area">
+            <div class="input-section">
+                <div class="section-title">
+                    📝 Original text
+                    <span id="detectedLangTag" class="lang-tag"></span>
+                </div>
+                <textarea 
+                    id="sourceText" 
+                    class="textarea" 
+                    placeholder="Type here... "
+                ></textarea>
+                <div class="pinyin-section" id="inputTranslitSection">
+                    <div class="pinyin-label">
+                        🗣️ Transliteration
+                    </div>
+                    <div class="pinyin-text" id="inputTranslitText"></div>
+                </div>
+                <div class="stats">
+                    <span>Characters: <span id="charCount">0</span></span>
+                    <span>Words: <span id="wordCount">0</span></span>
+                </div>
+            </div>
+
+            <div class="arrow-section">
+                <div class="arrow" id="translateArrow">→</div>
+            </div>
+
+            <div class="output-section">
+                <div class="section-title">
+                    🎯 Output
+                    <div class="success-indicator" id="successIndicator">✓</div>
+                </div>
+                <div class="copy-indicator" id="copyIndicator">✓ Đã copy!</div>
+                <div class="output-container">
+                    <div id="outputText" class="output-text empty">Translate result display at here...</div>
+                    <div class="pinyin-section" id="pinyinSection">
+                        <div class="pinyin-label">
+                            🔤 Pinyin
+                        </div>
+                        <div class="pinyin-text" id="pinyinText"></div>
+                    </div>
+                </div>
+                <div class="stats">
+                    <span>Length: <span id="outputLength">0</span> characters</span>
+                    <span>Time: <span id="translationTime">--</span>s</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="language-selection">
+            <div class="section-title" style="margin-bottom: 15px;">🌐 Chọn ngôn ngữ đích</div>
+            <div class="language-selector">
+                <div class="language-option">
+                    <input type="radio" id="zh" name="targetLang" value="zh" class="language-input" checked>
+                    <label for="zh" class="language-label">
+                        <span class="flag">🇨🇳</span>
+                        <span class="language-name">Tiếng Trung<br>giản thể</span>
+                        <span class="language-code">Chinese Simplified</span>
+                    </label>
+                </div>
+                <div class="language-option">
+                    <input type="radio" id="tzh" name="targetLang" value="tzh" class="language-input">
+                    <label for="tzh" class="language-label">
+                        <span class="flag">🇹🇼</span>
+                        <span class="language-name">Tiếng Trung<br>phồn thể</span>
+                        <span class="language-code">Chinese Traditional</span>
+                    </label>
+                </div>
+                <div class="language-option">
+                    <input type="radio" id="vi" name="targetLang" value="vi" class="language-input">
+                    <label for="vi" class="language-label">
+                        <span class="flag">🇻🇳</span>
+                        <span class="language-name">Tiếng Việt</span>
+                        <span class="language-code">Vietnamese</span>
+                    </label>
+                </div>
+                <div class="language-option">
+                    <input type="radio" id="en" name="targetLang" value="en" class="language-input">
+                    <label for="en" class="language-label">
+                        <span class="flag">🇺🇸</span>
+                        <span class="language-name">Tiếng Anh</span>
+                        <span class="language-code">English</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button type="button" class="translate-button" id="translateBtn">
+                <span class="spinner" id="spinner"></span>
+                <span id="buttonText">🚀 Translate</span>
+            </button>
+            <button type="button" class="clear-button" id="clearBtn">
+                🗑️ Clear all
+            </button>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+    </div>
+
+    <script>
+        function detectLanguage(text) {
+            // Regex cho các ký tự đặc trưng của Tiếng Việt
+            const vietnameseRegex = /[àáâãèéêìíòóôõùúýăđĩũơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]/i;
+            
+            // Regex cho các ký tự Hán (Trung, Nhật, Hàn)
+            const chineseRegex = /[\u4e00-\u9fff]/;
+
+            if (vietnameseRegex.test(text)) {
+                return "Tiếng Việt 🇻🇳";
+            } else if (chineseRegex.test(text)) {
+                return "Tiếng Trung 🇨🇳";
+            } else {
+                return "Tiếng Anh 🇺🇸";
+            }
+        }
+        // DOM Elements
+        const detectedLangTag = document.getElementById('detectedLangTag');
+        const inputTranslitSection = document.getElementById('inputTranslitSection');
+        const inputTranslitText = document.getElementById('inputTranslitText');
+        const translateBtn = document.getElementById('translateBtn');
+        const buttonText = document.getElementById('buttonText');
+        const spinner = document.getElementById('spinner');
+        const errorMessage = document.getElementById('errorMessage');
+        const sourceTextarea = document.getElementById('sourceText');
+        const outputText = document.getElementById('outputText');
+        const translateArrow = document.getElementById('translateArrow');
+        const successIndicator = document.getElementById('successIndicator');
+        const clearBtn = document.getElementById('clearBtn');
+        const pinyinSection = document.getElementById('pinyinSection');
+        const pinyinText = document.getElementById('pinyinText');
+        const copyIndicator = document.getElementById('copyIndicator');
+        const charCount = document.getElementById('charCount');
+        const wordCount = document.getElementById('wordCount');
+        const outputLength = document.getElementById('outputLength');
+        const translationTime = document.getElementById('translationTime');
+
+        // WebSocket and State Management
+        let socket;
+        let debounceTimer;
+        const DEBOUNCE_DELAY = 300; // 0.5 seconds
+        let requestsInFlight = {}; // Store pending requests by ID
+        let requestIdCounter = 0; // Simple unique ID generator
+
+        // --- WebSocket Initialization ---
+        function initWebSocket() {
+            // Construct WebSocket URL dynamically
+            const wsUrl = `ws://localhost:8000/ws`;
+            
+            console.log(`Connecting to WebSocket at ${wsUrl}`);
+            socket = new WebSocket(wsUrl);
+
+            socket.onopen = () => {
+                console.log('WebSocket connection established.');
+                showError(''); // Clear any previous connection errors
+            };
+
+            socket.onmessage = (event) => {
+                const response = JSON.parse(event.data);
+                const { id, result, error } = response;
+                
+                if (!id || !requestsInFlight[id]) {
+                    console.warn('Received message for an unknown request ID:', id);
+                    return;
+                }
+                
+                const requestInfo = requestsInFlight[id];
+                const endTime = Date.now();
+                const duration = ((endTime - requestInfo.startTime) / 1000).toFixed(1);
+
+                if (error || (result && result.error)) {
+                    const errorMsg = error || result.error;
+                    showError(`Lỗi dịch: ${errorMsg}`);
+                    outputText.textContent = 'Lỗi dịch thuật';
+                } else {
+                    updateUIWithResult(result, duration);
+                }
+                
+                // Clean up and reset UI
+                delete requestsInFlight[id];
+                resetUIState();
+            };
+
+            socket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                showError(' WebSocket failed. Retry later');
+                resetUIState();
+            };
+
+            socket.onclose = () => {
+                console.log('WebSocket connection closed.');
+                // Optional: Implement reconnection logic here
+                showError('Cannot connect to server... try to refresh page');
+                resetUIState();
+            };
+        }
+
+        // --- UI Update Functions ---
+        function updateUIWithResult(data, duration) {
+            // --- Cập nhật kết quả dịch và pinyin (như cũ) ---
+            const translatedText = data.translated_text || 'Empty result';
+            outputText.textContent = translatedText;
+            outputText.className = 'output-text fade-in';
+
+            const targetLang = document.querySelector('input[name="targetLang"]:checked').value;
+            // Sửa lại tên trường transliteration_text nếu API của bạn trả về tên này
+            if ((targetLang === 'zh' || targetLang === 'tzh') && data.transliteration_text) {
+                pinyinText.textContent = data.transliteration_text;
+                pinyinSection.style.display = 'block';
+                pinyinSection.classList.add('pinyin-fade-in');
+                setTimeout(() => pinyinSection.classList.remove('pinyin-fade-in'), 600);
+            } else {
+                pinyinSection.style.display = 'none';
+            }
+
+            // --- MỚI: Cập nhật phiên âm cho văn bản gốc ---
+            if (data.input_transliteration_text) {
+                inputTranslitText.textContent = data.input_transliteration_text;
+                inputTranslitSection.style.display = 'block';
+                inputTranslitSection.classList.add('pinyin-fade-in');
+                setTimeout(() => inputTranslitSection.classList.remove('pinyin-fade-in'), 600);
+            } else {
+                inputTranslitSection.style.display = 'none';
+            }
+
+            // --- Cập nhật stats (như cũ) ---
+            outputLength.textContent = translatedText.length;
+            translationTime.textContent = duration;
+            successIndicator.style.display = 'flex';
+            setTimeout(() => successIndicator.style.display = 'none', 3000);
+        }
+
+        function setLoadingState() {
+            translateBtn.disabled = true;
+            spinner.style.display = 'inline-block';
+            buttonText.textContent = 'Translating...';
+            translateArrow.classList.add('processing');
+            outputText.textContent = 'Processing...';
+            outputText.className = 'output-text';
+            errorMessage.style.display = 'none';
+            successIndicator.style.display = 'none';
+            pinyinSection.style.display = 'none';
+            inputTranslitSection.style.display = 'none'; // Thêm dòng này
+        }
+
+        function resetUIState() {
+            translateBtn.disabled = false;
+            spinner.style.display = 'none';
+            buttonText.textContent = '🚀 Dịch ngay';
+            translateArrow.classList.remove('processing');
+        }
+
+        // --- Translation Logic ---
+        function sendTranslationRequest() {
+            const sourceText = sourceTextarea.value.trim();
+            if (!sourceText) {
+                return;
+            }
+
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                showError('Chưa kết nối tới server dịch. Đang thử lại...');
+                initWebSocket(); // Attempt to reconnect
+                return;
+            }
+            
+            setLoadingState();
+            
+            const targetLang = document.querySelector('input[name="targetLang"]:checked').value;
+            const req_id = ++requestIdCounter;
+            
+            requestsInFlight[req_id] = { startTime: Date.now() };
+
+            const payload = {
+                id: req_id,
+                text: sourceText,
+                tgt_lang: targetLang
+            };
+            
+            socket.send(JSON.stringify(payload));
+        }
+
+        // --- Event Listeners ---
+        sourceTextarea.addEventListener('input', () => {
+            // Auto-resize textarea
+            sourceTextarea.style.height = 'auto';
+            sourceTextarea.style.height = Math.max(150, sourceTextarea.scrollHeight) + 'px';
+            
+            // Update stats
+            const text = sourceTextarea.value;
+            charCount.textContent = text.length;
+            wordCount.textContent = text.trim() ? text.trim().split(/\s+/).length : 0;
+            
+            // Debounce logic
+            clearTimeout(debounceTimer);
+            if (text.trim()) {
+                debounceTimer = setTimeout(sendTranslationRequest, DEBOUNCE_DELAY);
+            } else {
+                // THÊM ĐOẠN NÀY VÀO
+                // Nếu input rỗng, xóa kết quả và ẩn pinyin
+                outputText.textContent = 'Translate result display at here...';
+                outputText.className = 'output-text empty';
+                pinyinSection.style.display = 'none';
+                inputTranslitSection.style.display = 'none'; // Thêm dòng này
+                outputLength.textContent = '0';
+                translationTime.textContent = '--';
+            }
+        });
+
+        // Manual translate button
+        translateBtn.addEventListener('click', () => {
+            clearTimeout(debounceTimer); // Prevent double sending
+            sendTranslationRequest();
+        });
+        
+        // Translate when language changes
+        document.querySelectorAll('input[name="targetLang"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                if (sourceTextarea.value.trim()) {
+                    clearTimeout(debounceTimer);
+                    sendTranslationRequest();
+                }
+            });
+        });
+
+        // Clear button
+        clearBtn.addEventListener('click', () => {
+            clearTimeout(debounceTimer);
+            sourceTextarea.value = '';
+            outputText.textContent = 'Translate result display at here...';
+            outputText.className = 'output-text empty';
+            pinyinSection.style.display = 'none';
+            inputTranslitSection.style.display = 'none'; // Thêm dòng này
+            errorMessage.style.display = 'none';
+            successIndicator.style.display = 'none';
+            charCount.textContent = '0';
+            wordCount.textContent = '0';
+            outputLength.textContent = '0';
+            translationTime.textContent = '--';
+            sourceTextarea.style.height = '150px';
+            detectedLangTag.style.display = 'none'; 
+        });
+
+        // --- Utility Functions ---
+        function showError(message) {
+            if (message) {
+                errorMessage.textContent = message;
+                errorMessage.style.display = 'block';
+                errorMessage.classList.add('fade-in');
+            } else {
+                errorMessage.style.display = 'none';
+            }
+        }
+
+        function showCopyIndicator() {
+            copyIndicator.classList.add('show');
+            setTimeout(() => copyIndicator.classList.remove('show'), 2000);
+        }
+
+        // Copy functionality (unchanged)
+        outputText.addEventListener('click', function() {
+            if (this.textContent && !this.classList.contains('empty')) {
+                navigator.clipboard.writeText(this.textContent).then(showCopyIndicator);
+            }
+        });
+        pinyinText.addEventListener('click', function() {
+            if (this.textContent) {
+                navigator.clipboard.writeText(this.textContent).then(showCopyIndicator);
+            }
+        });
+        
+        sourceTextarea.addEventListener('input', () => {
+            // ... (code cũ để resize và cập nhật stats giữ nguyên)
+            const text = sourceTextarea.value;
+            charCount.textContent = text.length;
+            wordCount.textContent = text.trim() ? text.trim().split(/\s+/).length : 0;
+
+            // BẮT ĐẦU THÊM CODE MỚI TẠI ĐÂY
+            if (text.trim()) {
+                // Hiển thị và cập nhật thẻ ngôn ngữ
+                const lang = detectLanguage(text);
+                detectedLangTag.textContent = lang;
+                detectedLangTag.style.display = 'inline-block'; // 'inline-block' để thẻ hiện ra
+
+                // Debounce logic (giữ nguyên)
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(sendTranslationRequest, DEBOUNCE_DELAY);
+            } else {
+                // Ẩn thẻ ngôn ngữ nếu không có text
+                detectedLangTag.style.display = 'none';
+
+                // Xóa kết quả (code bạn đã yêu cầu ở câu trước)
+                outputText.textContent = 'Translate result display at here...';
+                outputText.className = 'output-text empty';
+                pinyinSection.style.display = 'none';
+                outputLength.textContent = '0';
+                translationTime.textContent = '--';
+            }
+            // KẾT THÚC CODE MỚI
+        });
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initWebSocket();
+            charCount.textContent = '0';
+            wordCount.textContent = '0';
+            outputText.style.cursor = 'pointer';
+            pinyinText.style.cursor = 'pointer';
+            outputText.title = 'Click để copy văn bản đã dịch';
+            pinyinText.title = 'Click để copy pinyin';
+        });
+    </script>
+</body>
+</html>
