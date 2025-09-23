@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Madlad400 Translation Interface (WebSocket)</title>
+    <title> Madlad400 Translation Interface (WebSocket)</title>
     <style>
         * {
             margin: 0;
@@ -528,13 +528,13 @@
                     <div id="outputText" class="output-text empty">Translate result display at here...</div>
                     <div class="pinyin-section" id="pinyinSection">
                         <div class="pinyin-label">
-                            🔤 Pinyin
+                            🔤 TRANSLITERATION
                         </div>
                         <div class="pinyin-text" id="pinyinText"></div>
                     </div>
                 </div>
                 <div class="stats">
-                    <span>Length: <span id="outputLength">0</span> characters</span>
+                    <span>Characters:<span id="outputLength"> 0</span></span>
                     <span>Time: <span id="translationTime">--</span>s</span>
                 </div>
             </div>
@@ -592,6 +592,9 @@
     </div>
 
     <script>
+        let requestIdCounter = 0;
+// THÊM DÒNG NÀY:
+        let lastRequestId = null;
         function detectLanguage(text) {
             // Regex cho các ký tự đặc trưng của Tiếng Việt
             const vietnameseRegex = /[àáâãèéêìíòóôõùúýăđĩũơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]/i;
@@ -633,7 +636,8 @@
         let debounceTimer;
         const DEBOUNCE_DELAY = 300; // 0.5 seconds
         let requestsInFlight = {}; // Store pending requests by ID
-        let requestIdCounter = 0; // Simple unique ID generator
+        
+        // Simple unique ID generator
 
         // --- WebSocket Initialization ---
         function initWebSocket() {
@@ -652,10 +656,15 @@
                 const response = JSON.parse(event.data);
                 const { id, result, error } = response;
                 
-                if (!id || !requestsInFlight[id]) {
-                    console.warn('Received message for an unknown request ID:', id);
-                    return;
+                // THAY ĐỔI ĐIỀU KIỆN KIỂM TRA
+            if (id !== lastRequestId || !requestsInFlight[id]) {
+                console.log(`Ignoring response for old request ID: ${id}. Current ID is ${lastRequestId}`);
+                // Xóa yêu cầu cũ để tránh tràn bộ nhớ
+                if (requestsInFlight[id]) {
+                    delete requestsInFlight[id];
                 }
+                return;
+            }
                 
                 const requestInfo = requestsInFlight[id];
                 const endTime = Date.now();
@@ -697,7 +706,7 @@
 
             const targetLang = document.querySelector('input[name="targetLang"]:checked').value;
             // Sửa lại tên trường transliteration_text nếu API của bạn trả về tên này
-            if ((targetLang === 'zh' || targetLang === 'tzh') && data.transliteration_text) {
+            if ((targetLang === 'zh' || targetLang === 'tzh'|| targetLang === 'en') && data.transliteration_text) {
                 pinyinText.textContent = data.transliteration_text;
                 pinyinSection.style.display = 'block';
                 pinyinSection.classList.add('pinyin-fade-in');
@@ -760,7 +769,8 @@
             
             const targetLang = document.querySelector('input[name="targetLang"]:checked').value;
             const req_id = ++requestIdCounter;
-            
+            lastRequestId = req_id;
+
             requestsInFlight[req_id] = { startTime: Date.now() };
 
             const payload = {
